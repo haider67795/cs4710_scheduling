@@ -1,1 +1,9 @@
+#obv lol
 .env
+
+#to make sure the first pass .jsons that are generated are not pushed to repo
+*.json
+
+#python stuff
+__pycache__
+.venv
