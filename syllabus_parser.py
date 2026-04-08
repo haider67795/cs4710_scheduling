@@ -8,8 +8,7 @@ import fitz
 import pytesseract
 from PIL import Image
 
-
-# Werid case of not working on Windows for me (haider) so I have this here.... If anyone else is using windows we may have to look into this more
+# Windows Tesseract path configuration
 import platform
 if platform.system() == "Windows":
     pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
@@ -174,21 +173,25 @@ def extract_pdf_rows_first(pdf_path):
     }
 
 
-def main():
-    if len(sys.argv) != 3:
-        print("Usage: python parse_syllabus.py <input_pdf> <output_json>")
-        sys.exit(1)
-
-    input_pdf = sys.argv[1]
-    output_json = sys.argv[2]
-
+def parse_to_file(input_pdf: str, output_json: str) -> str:
+    """
+    This is the new callable function for main.py.
+    It runs the extraction and saves the JSON file, returning the file path.
+    """
+    print(f"Starting strip-by-strip OCR on {input_pdf}...")
     result = extract_pdf_rows_first(input_pdf)
 
     with open(output_json, "w", encoding="utf-8") as f:
         json.dump(result, f, indent=2, ensure_ascii=False)
 
     print(f"Saved OCR output to {output_json}")
+    return output_json
 
 
+# this if for testing this particular script if we need it
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) != 3:
+        print("Usage: python pdf_parser.py <input_pdf> <output_json>")
+        sys.exit(1)
+
+    parse_to_file(sys.argv[1], sys.argv[2])
