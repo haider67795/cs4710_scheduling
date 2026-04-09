@@ -33,13 +33,17 @@ def get_gcal_service():
             token.write(creds.to_json())
 
     try:
-    service = build("calendar", "v3", credentials=creds)
+        service = build("calendar", "v3", credentials=creds)
+        return service
+    except HttpError as error:
+        print(f"An error occurred: {error}")
+        return None
 
 def push_events_to_calendar(events: list[dict]):
     gcal_service = get_gcal_service()
     for event in events:
         print("adding " + event["summary"] + " to primary calendar.")
-         gcal_event = {
+        gcal_event = {
             "summary": event["summary"],
             "description": event.get("description", ""),
             "start": {
@@ -51,6 +55,6 @@ def push_events_to_calendar(events: list[dict]):
                 "timeZone": "America/New_York",
             },
         }
-        result = service.events().insert(calendarId="primary", body=gcal_event).execute()
+        result = gcal_service.events().insert(calendarId="primary", body=gcal_event).execute()
         print(f"  {event['summary']} → {result.get('htmlLink')}")
 
