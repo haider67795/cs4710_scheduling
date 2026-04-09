@@ -56,6 +56,6 @@ def push_events_to_calendar(events: list[dict]):
                 "timeZone": "America/New_York",
             },
         }
-        result = service.events().insert(calendarId="primary", body=gcal_event).execute()
+        result = gcal_service.events().insert(calendarId="primary", body=gcal_event).execute()
         print(f"  {event['summary']} → {result.get('htmlLink')}")
 
