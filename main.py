@@ -6,6 +6,8 @@ import pathlib
 from syllabus_parser import parse_to_file
 from agent import ask_scheduler_agent
 
+from gcal import push_events_to_calendar
+
 
 def run_schedule_pipeline(pdf_filename: str):
     print(f"\n--- Starting Pipeline for {pdf_filename} ---")
@@ -64,6 +66,9 @@ if __name__ == "__main__":
 
     # Print the final Python data structure
     if calendar_events:
+        push_events_to_calendar(calendar_events)
+        """
         print("\n--- Final Extracted Data ---")
         for event in calendar_events:
             print(f"{event.get('start_time')} | {event.get('summary')}")
+        """
