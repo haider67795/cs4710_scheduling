@@ -42,9 +42,6 @@ def get_gcal_service():
 
 def push_events_to_calendar(events: list[dict]):
     gcal_service = get_gcal_service()
-    if not gcal_service:
-        print("Error: Could not connect to Google Calendar.")
-        return
     for event in events:
         print("adding " + event["summary"] + " to primary calendar.")
         gcal_event = {
@@ -59,6 +56,6 @@ def push_events_to_calendar(events: list[dict]):
                 "timeZone": "America/New_York",
             },
         }
-        result = gcal_service.events().insert(calendarId="primary", body=gcal_event).execute()
+        result = service.events().insert(calendarId="primary", body=gcal_event).execute()
         print(f"  {event['summary']} → {result.get('htmlLink')}")
 
