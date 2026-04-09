@@ -39,8 +39,12 @@ def get_gcal_service():
         print(f"An error occurred: {error}")
         return None
 
+
 def push_events_to_calendar(events: list[dict]):
     gcal_service = get_gcal_service()
+    if not gcal_service:
+        print("Error: Could not connect to Google Calendar.")
+        return
     for event in events:
         print("adding " + event["summary"] + " to primary calendar.")
         gcal_event = {
