@@ -31,7 +31,7 @@ def ask_scheduler_agent(context_file_path: str, user_query: str) -> str:
 
     EXTRACTION RULES:
     1. Target High-Value Events: Extract ALL homework release dates, homework deadlines, midterms, final exams, essays, project milestones, and presentations.
-    2. Ignore Noise: Completely ignore general lecture topics, reading assignments, office hours, and administrative policies.
+    2. Ignore Noise: Completely ignore general lecture topics, reading assignments, office hours, and administrative policies. But do extract regular class meeting times if they are provided in the user context. Also if something is ambiguous but could be an assignment or reading, extract it anyway and let the user clean it up later if needed. 
     3. Time Defaults: If an exact time is missing, default to "23:59:00" for deadlines, and "09:00:00" for exams/releases.
     4. Duration: For deadlines, make the start and end time identical. For exams, assume a 2-hour duration if an end time is not provided.
     5. Year: Assume all dates occur in the year 2026.
@@ -61,7 +61,7 @@ def ask_scheduler_agent(context_file_path: str, user_query: str) -> str:
     return response.text
 
 
-# --- Execution ---
+# --- Execution --- lowk i think is is useless ? 
 if __name__ == "__main__":
     file_to_load = "ai_syl_scraped.md"
 
