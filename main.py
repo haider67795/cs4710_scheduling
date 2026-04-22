@@ -37,9 +37,27 @@ def run_schedule_pipeline(input_filename: str):
             f"Error: Unsupported file type '{path.suffix}'. Please provide a .pdf or .json file.")
         return None
 
+    print("\n[Optional] Provide context to help the AI (e.g., 'The year is 2026. Class meets Mon/Wed at 10am. Due dates are always 11:59 PM').")
+    user_context = input("Context (press Enter to skip): ").strip()
+
     # Step 2: Query the LLM
     print("\n[2/3] Extracting calendar events via Gemini...")
-    query = "Extract all assignments, projects, and exams into the strict Google Calendar JSON array format. No markdown, no explanations."
+    query = f"""
+    Extract all assignments, projects, exams, AND regular class meeting times into the strict Google Calendar JSON array format. 
+    Absolutely no markdown, no explanations, just raw JSON.
+
+    CRITICAL RULES:
+    1. If a year is missing, assume it is the current academic year.
+    2. If a specific time is missing (like "Due Friday"), use the user context below to figure out the exact time.
+    3. RECURRING CLASSES: If the user context states when the class meets (e.g., "Mon/Wed at 10am"), create ONE event for the class and include a "recurrence" array using standard RRULE format (e.g., ["RRULE:FREQ=WEEKLY;BYDAY=MO,WE"]). 
+    4. Make sure recurring class events have a standard length (e.g., 1 hour and 15 minutes) unless the user says otherwise.
+    5. Assume that normal exams and quizzes are during normal lecture time and in those cases do not create a separate event with a different time just indicate that in the description and also in brackets [] before the normal event title. But if the user context explicitly states that an exam is at a different time, then create a separate event for the exam with the specified time. Try to make normal lecture blocks when possible but if there is an exam on the same day then pirotize making an event for the exam instead of the normal lecture time block. If there are multiple events on the same day, make separate events for each and do not combine them into one event.
+    6. If the user context provides a class name (e.g., "CS 4710"), include that in the event title for all events related to that class (e.g., "CS 4710 Midterm 1", "CS 4710 HW1 Due"). If no class name is provided, just make the best event title you can based on the information available in the syllabus.
+    -----------------------------------------------
+    USER CONTEXT AND OVERRIDES:
+    {user_context if user_context else "None provided. Infer times as best as you can."}
+    -----------------------------------------------
+    """
     raw_llm_response = ask_scheduler_agent(json_output_path, query)
 
     # Step 3: Parse the LLM output into Python objects
@@ -90,6 +108,15 @@ if __name__ == "__main__":
     parser_delete.add_argument(
         "event_id", help="The exact Google Calendar Event ID to delete")
 
+    parser_clean = subparsers.add_parser(
+        "clean", help="Remove events from the calendar")
+
+    group = parser_clean.add_mutually_exclusive_group(required=True)
+    group.add_argument("--all", action="store_true",
+                       help="Delete EVERY event on the calendar")
+    group.add_argument("--past", action="store_true",
+                       help="Delete only events that have already ended")
+
     args = parser.parse_args()
 
     # --- Command Routing ---
@@ -111,3 +138,7 @@ if __name__ == "__main__":
 
     elif args.command == "delete":
         delete_event(args.event_id, calendar_id=TARGET_CALENDAR_ID)
+
+    elif args.command == "clean":
+        from gcal import clean_events
+        clean_events(calendar_id=TARGET_CALENDAR_ID, delete_all=args.all)
