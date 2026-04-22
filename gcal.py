@@ -157,3 +157,53 @@ def push_events_to_calendar(events: list[dict], calendar_id='primary', filename=
 
     print("\nRefreshing local backup with new event IDs...")
     list_events(calendar_id=calendar_id, max_results=50, filename=filename)
+
+
+def clean_events(calendar_id='primary', filename="my_schedule.json", delete_all=False):
+    """
+    Deletes events from Google and local storage.
+    If delete_all is True, it clears everything. 
+    Otherwise, it only clears events that ended before now.
+    """
+    service = get_gcal_service()
+    now = datetime.datetime.utcnow().isoformat() + "Z"
+
+    try:
+        if delete_all:
+            print("Searching for ALL events to remove...")
+            # No time constraints = everything
+            events_result = service.events().list(calendarId=calendar_id).execute()
+        else:
+            print("Searching for past events to remove...")
+            events_result = service.events().list(
+                calendarId=calendar_id,
+                timeMax=now,
+                singleEvents=True
+            ).execute()
+
+        events_to_delete = events_result.get('items', [])
+
+        if not events_to_delete:
+            print("No events found to clean.")
+            return
+
+        print(f"Found {len(events_to_delete)} events. Starting cleanup...")
+        for event in events_to_delete:
+            service.events().delete(calendarId=calendar_id,
+                                    eventId=event['id']).execute()
+            print(f"  Deleted: {event.get('summary', 'Untitled')}")
+
+        # Sync local storage
+        if delete_all:
+            save_events_to_file([], filename)
+        else:
+            local_events = load_events_from_file(filename)
+            past_ids = {e['id'] for e in events_to_delete}
+            updated_local = [
+                e for e in local_events if e.get('id') not in past_ids]
+            save_events_to_file(updated_local, filename)
+
+        print("Cleanup complete.")
+
+    except HttpError as error:
+        print(f"An error occurred: {error}")
