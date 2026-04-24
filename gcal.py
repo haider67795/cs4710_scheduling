@@ -162,48 +162,73 @@ def push_events_to_calendar(events: list[dict], calendar_id='primary', filename=
 def clean_events(calendar_id='primary', filename="my_schedule.json", delete_all=False):
     """
     Deletes events from Google and local storage.
-    If delete_all is True, it clears everything. 
-    Otherwise, it only clears events that ended before now.
+    Handles API pagination to ensure massive schedules are fully wiped.
     """
     service = get_gcal_service()
     now = datetime.datetime.utcnow().isoformat() + "Z"
 
     try:
-        if delete_all:
-            print("Searching for ALL events to remove...")
-            # No time constraints = everything
-            events_result = service.events().list(calendarId=calendar_id).execute()
+        events_to_delete = []
+        page_token = None
+
+        print(f"Scanning calendar for events (this may take a second)...")
+
+        # --- NEW: Pagination Loop ---
+        while True:
+            if delete_all:
+                events_result = service.events().list(
+                    calendarId=calendar_id,
+                    pageToken=page_token,
+                    maxResults=2500,       # Pull up to 2500 at a time
+                    singleEvents=True      # Expand all recurring events to catch everything
+                ).execute()
+            else:
+                events_result = service.events().list(
+                    calendarId=calendar_id,
+                    timeMax=now,
+                    singleEvents=True,
+                    maxResults=2500,
+                    pageToken=page_token
+                ).execute()
+
+            items = events_result.get('items', [])
+            events_to_delete.extend(items)
+
+            # Check if there is a "Page 2"
+            page_token = events_result.get('nextPageToken')
+            if not page_token:
+                break  # We reached the end of the calendar
+
+        # --- NEW: Filter out "Ghosts" ---
+        # Google returns recently deleted events with a 'cancelled' status. We ignore them.
+        active_events = [e for e in events_to_delete if e.get(
+            'status') != 'cancelled']
+
+        if not active_events:
+            print("No active events found to clean. Calendar is empty!")
         else:
-            print("Searching for past events to remove...")
-            events_result = service.events().list(
-                calendarId=calendar_id,
-                timeMax=now,
-                singleEvents=True
-            ).execute()
-
-        events_to_delete = events_result.get('items', [])
-
-        if not events_to_delete:
-            print("No events found to clean.")
-            return
-
-        print(f"Found {len(events_to_delete)} events. Starting cleanup...")
-        for event in events_to_delete:
-            service.events().delete(calendarId=calendar_id,
-                                    eventId=event['id']).execute()
-            print(f"  Deleted: {event.get('summary', 'Untitled')}")
+            print(
+                f"Found {len(active_events)} active events. Starting cleanup...")
+            for event in active_events:
+                try:
+                    service.events().delete(calendarId=calendar_id,
+                                            eventId=event['id']).execute()
+                    print(
+                        f"  Deleted: {event.get('summary', 'Untitled Event')}")
+                except Exception as e:
+                    pass  # Ignore errors if the event was already somehow deleted
 
         # Sync local storage
         if delete_all:
             save_events_to_file([], filename)
         else:
             local_events = load_events_from_file(filename)
-            past_ids = {e['id'] for e in events_to_delete}
+            past_ids = {e['id'] for e in active_events}
             updated_local = [
                 e for e in local_events if e.get('id') not in past_ids]
             save_events_to_file(updated_local, filename)
 
-        print("Cleanup complete.")
+        print("Cleanup completely finished.")
 
-    except HttpError as error:
-        print(f"An error occurred: {error}")
+    except Exception as error:
+        print(f"An error occurred during cleanup: {error}")

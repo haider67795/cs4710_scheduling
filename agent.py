@@ -51,7 +51,7 @@ def ask_scheduler_agent(file_path: str, user_query: str) -> str:
 
             # Send the file AND your prompt to the model
             response = client.models.generate_content(
-                model='gemini-2.5-flash',
+                model='gemini-2.5-flash-lite',
                 contents=[gemini_file, user_query],
                 config=config
             )
@@ -65,7 +65,7 @@ def ask_scheduler_agent(file_path: str, user_query: str) -> str:
                 context_data = f.read()
 
             response = client.models.generate_content(
-                model='gemini-2.5-flash',
+                model='gemini-2.5-flash-lite',
                 # Inject the text directly as we did before
                 contents=[
                     f"COURSE DATA TO PARSE:\n{context_data}", user_query],
